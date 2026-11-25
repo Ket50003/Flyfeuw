@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="uk"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>vaddi_shop</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--red:#c62839;--green:#14683a;--gold:#f4c542;--bg:#0f2a1d;--card:#fff;--tx:#1b1b1b}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,sans-serif;background:linear-gradient(#0f2a1d,#123c29);color:#fff;padding:0 12px 100px;min-height:100vh}
+.garland{text-align:center;font-size:22px;letter-spacing:6px;padding-top:8px;white-space:nowrap;overflow:hidden}
+h1{text-align:center;margin:6px 0 2px;color:var(--gold);font-size:26px}
+.sub{text-align:center;opacity:.8;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.item{background:var(--card);color:var(--tx);border-radius:16px;overflow:hidden;border:2px solid var(--gold)}
+.ph{width:100%;aspect-ratio:1;background:linear-gradient(135deg,var(--red),var(--green));display:flex;align-items:center;justify-content:center;font-size:48px;overflow:hidden}
+.ph img{width:100%;height:100%;object-fit:cover}
+.item .b{padding:8px}.price{color:var(--red);font-weight:700;margin:2px 0 8px}
+button{border:0;border-radius:12px;padding:11px 14px;font-size:15px;background:var(--red);color:#fff;width:100%;font-weight:600}
+button.sec{background:rgba(255,255,255,.15)}
+.qty{display:flex;align-items:center;gap:8px}.qty button{width:42px}.qty b{flex:1;text-align:center}
+input,textarea{width:100%;padding:12px;border-radius:10px;border:0;font-size:16px;margin-bottom:10px}
+label.pay{display:block;background:rgba(255,255,255,.12);padding:12px;border-radius:10px;margin-bottom:8px}
+.bar{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:5}
+.cardbox{background:#fff;color:var(--tx);border-radius:16px;padding:16px;text-align:center}
+.num{font-size:22px;letter-spacing:1px;margin:10px 0;font-weight:700}
+.hide{display:none}
+.snow{position:fixed;top:-20px;color:#fff;pointer-events:none;animation:fall linear infinite;z-index:1}
+@keyframes fall{to{transform:translateY(110vh)}}
+section,.bar{position:relative;z-index:2}.bar{position:fixed}
+</style></head><body>
+<div class="garland">🎄🔴🟡🟢🔴🟡🟢🔴🟡🟢🎄</div>
+<h1 id="title">🎅 vaddi_shop</h1><div class="sub">Новорічні подарунки ✨</div>
+
+<section id="shop"><div class="grid" id="grid"></div></section>
+
+<section id="checkout" class="hide">
+  <h2>🧾 Замовлення</h2><div id="cart"></div>
+  <input id="name" placeholder="Ваше імʼя">
+  <input id="phone" type="tel" placeholder="Телефон">
+  <textarea id="addr" rows="3" placeholder="Куди відправити? (місто, відділення НП / адреса)"></textarea>
+  <h3>Оплата</h3>
+  <label class="pay"><input type="radio" name="pay" value="cod" checked style="width:auto;margin:0 8px 0 0">Накладений платіж</label>
+  <label class="pay"><input type="radio" name="pay" value="card" style="width:auto;margin:0 8px 0 0">Оплата на карту зараз</label>
+  <button class="sec" onclick="show('shop')">← Назад</button>
+</section>
+
+<section id="paycard" class="hide">
+  <h2>💳 Оплата</h2>
+  <div class="cardbox"><div>До сплати:</div><div class="num" id="sum"></div>
+  <div>Номер картки:</div><div class="num" id="cardnum"></div>
+  <div id="cardowner" style="opacity:.7"></div><br>
+  <button onclick="copyCard()">📋 Скопіювати номер</button></div>
+  <p>Після переказу натисніть «Я оплатив(ла)» і надішліть повідомлення в чат.</p>
+</section>
+
+<div class="bar"><button id="main" class="hide"></button></div>
+
+<script>
+const tg = window.Telegram?.WebApp; tg?.ready(); tg?.expand();
+const $ = id => document.getElementById(id);
+let D, cart = {}, step = "shop";
+
+for(let i=0;i<28;i++){const s=document.createElement("span");s.className="snow";s.textContent="❄";
+ s.style.left=Math.random()*100+"vw";s.style.fontSize=(8+Math.random()*14)+"px";
+ s.style.opacity=.4+Math.random()*.6;s.style.animationDuration=(6+Math.random()*8)+"s";
+ s.style.animationDelay=(-Math.random()*10)+"s";document.body.appendChild(s);}
+
+fetch("products.json?"+Date.now()).then(r=>r.json()).then(d=>{
+  D=d; $("title").textContent="🎅 "+d.shop; document.title=d.shop;
+  $("grid").innerHTML=d.products.map((p,i)=>`
+   <div class="item"><div class="ph"><span>🎁</span></div>
+   <div class="b"><b>${p.name}</b><div class="price">${p.price} ${d.currency}</div><div id="q${i}"></div></div></div>`).join("");
+  d.products.forEach((p,i)=>{
+    const img=new Image(); img.onload=()=>{document.querySelectorAll(".ph")[i].innerHTML="";document.querySelectorAll(".ph")[i].appendChild(img)}; img.src=p.photo;
+    renderQty(i);
+  });
+});
+
+const total=()=>D.products.reduce((s,p,i)=>s+(cart[i]||0)*p.price,0);
+const count=()=>Object.values(cart).reduce((a,b)=>a+b,0);
+function renderQty(i){const n=cart[i]||0;
+ $("q"+i).innerHTML=n?`<div class="qty"><button onclick="chg(${i},-1)">−</button><b>${n}</b><button onclick="chg(${i},1)">+</button></div>`:`<button onclick="chg(${i},1)">Додати</button>`;}
+function chg(i,d){cart[i]=Math.max(0,(cart[i]||0)+d);renderQty(i);updateMain();}
+
+function show(s){step=s;
+ ["shop","checkout","paycard"].forEach(x=>$(x).classList.toggle("hide",x!==s));
+ if(s==="checkout")$("cart").innerHTML=D.products.map((p,i)=>cart[i]?`<p>${p.name} × ${cart[i]} — ${p.price*cart[i]} ${D.currency}</p>`:"").join("")+`<p><b>Разом: ${total()} ${D.currency}</b></p>`;
+ if(s==="paycard"){$("sum").textContent=total()+" "+D.currency;$("cardnum").textContent=D.card.number;$("cardowner").textContent=D.card.owner;}
+ updateMain();}
+
+function updateMain(){const b=$("main");b.classList.remove("hide");
+ if(step==="shop"){count()?(b.textContent=`🛒 Кошик (${count()}) · ${total()} ${D.currency}`,b.onclick=()=>show("checkout")):b.classList.add("hide");}
+ else if(step==="checkout"){b.textContent="Підтвердити";b.onclick=confirmOrder;}
+ else{b.textContent="Я оплатив(ла) ✅";b.onclick=()=>send(true);}}
+
+function confirmOrder(){
+ if(!$("name").value.trim()||!$("phone").value.trim()||!$("addr").value.trim())return alert("Заповніть імʼя, телефон і адресу");
+ document.querySelector("input[name=pay]:checked").value==="card"?show("paycard"):send(false);}
+
+function send(paid){
+ const items=D.products.map((p,i)=>cart[i]?`• ${p.name} × ${cart[i]}`:"").filter(Boolean).join("\n");
+ const text=`🎄 Нове замовлення ${D.shop}\n${items}\nРазом: ${total()} ${D.currency}\n\n👤 ${$("name").value}\n📞 ${$("phone").value}\n📍 ${$("addr").value}\n💳 ${paid?"Оплачено на карту":"Накладений платіж"}`;
+ const url=`https://t.me/${D.owner}?text=${encodeURIComponent(text)}`;
+ tg?.openTelegramLink?tg.openTelegramLink(url):window.open(url,"_blank");}
+
+function copyCard(){navigator.clipboard?.writeText(D.card.number.replace(/\s/g,""));alert("Номер скопійовано");}
+</script></body></html>

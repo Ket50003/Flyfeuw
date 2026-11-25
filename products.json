@@ -1,0 +1,12 @@
+{
+  "shop": "vaddi_shop",
+  "owner": "ТВІЙ_НІК_БЕЗ_@",
+  "currency": "грн",
+  "card": { "number": "0000 0000 0000 0000", "owner": "Імʼя Прізвище" },
+  "products": [
+    { "name": "Новорічний светр", "price": 900,  "photo": "photos/1.jpg" },
+    { "name": "Ялинкова іграшка", "price": 150,  "photo": "photos/2.jpg" },
+    { "name": "Подарунковий набір", "price": 600, "photo": "photos/3.jpg" },
+    { "name": "Гірлянда", "price": 250, "photo": "photos/4.jpg" }
+  ]
+}
